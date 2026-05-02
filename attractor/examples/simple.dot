@@ -1,0 +1,25 @@
+digraph Simple {
+  graph [
+    label="Simple Attractor Flow",
+    goal="$task",
+    default_max_retry=1
+  ]
+
+  start [shape=Mdiamond]
+  exit [shape=Msquare]
+
+  Build [
+    shape=box,
+    label="Build",
+    prompt="Goal: $goal\nImplement the requested change for $task."
+  ]
+
+  Verify [
+    shape=parallelogram,
+    label="Verify",
+    max_retries=0,
+    tool_command="make test"
+  ]
+
+  start -> Build -> Verify -> exit
+}
