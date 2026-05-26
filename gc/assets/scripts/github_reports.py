@@ -149,6 +149,31 @@ def render_pr_review_comment(
     )
 
 
+def render_triage_comment(
+    report_path: Path,
+    *,
+    artifact_ref: str = "",
+    human_approved: bool = False,
+) -> str:
+    report = validate_triage_report_text(report_path.read_text(encoding="utf-8"))
+    gate_text = "human approved" if human_approved else "not human approved"
+    lines = [
+        f"<!-- gc:github-issue-triage repo={report.repo} issue={report.issue_number} body_hash={report.body_hash} -->",
+        "## GC Issue Triage",
+        "",
+        f"- verdict: {report.verdict}",
+        f"- priority: {report.priority}",
+        f"- next_action: {report.recommended_next_action}",
+        f"- body_hash: {report.body_hash}",
+        f"- gate: {gate_text}",
+    ]
+    if artifact_ref:
+        lines.append(f"- artifact: {artifact_ref}")
+    if report.verdict == "security_sensitive" and not human_approved:
+        lines.append("- note: security-sensitive details require human approval before public posting")
+    return "\n".join(lines) + "\n"
+
+
 def render_issue_fix_status(
     *,
     state: str,
@@ -218,6 +243,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     review_comment_parser.add_argument("--artifact-ref", default="")
     review_comment_parser.add_argument("--human-approved", action="store_true")
 
+    triage_comment_parser = subparsers.add_parser("render-triage-comment")
+    triage_comment_parser.add_argument("report_path", type=Path)
+    triage_comment_parser.add_argument("--output", type=Path, required=True)
+    triage_comment_parser.add_argument("--artifact-ref", default="")
+    triage_comment_parser.add_argument("--human-approved", action="store_true")
+
     fix_status_parser = subparsers.add_parser("render-issue-fix-status")
     fix_status_parser.add_argument("--state", required=True)
     fix_status_parser.add_argument("--summary", required=True)
@@ -256,6 +287,16 @@ def main(argv: list[str] | None = None) -> int:
                 encoding="utf-8",
             )
             output = {"ok": True, "outcome": outcome, "output": str(args.output)}
+        elif args.command == "render-triage-comment":
+            args.output.write_text(
+                render_triage_comment(
+                    args.report_path,
+                    artifact_ref=args.artifact_ref,
+                    human_approved=args.human_approved,
+                ),
+                encoding="utf-8",
+            )
+            output = {"ok": True, "output": str(args.output)}
         elif args.command == "render-issue-fix-status":
             args.output.write_text(
                 render_issue_fix_status(

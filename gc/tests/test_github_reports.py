@@ -89,6 +89,24 @@ recommended_next_action: fix
                 artifact_ref="artifact",
                 human_approved=True,
             )
+            triage_path = root / "triage.md"
+            triage_path.write_text(
+                "---\n"
+                "schema: gc.github-issue-triage-report.v1\n"
+                "repo: owner/repo\n"
+                "issue_number: 123\n"
+                "body_hash: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+                "verdict: needs_info\n"
+                "priority: p2\n"
+                "recommended_next_action: ask_reporter\n"
+                "---\n",
+                encoding="utf-8",
+            )
+            triage_comment = github_reports.render_triage_comment(
+                triage_path,
+                artifact_ref="artifact",
+                human_approved=False,
+            )
             status_comment = github_reports.render_issue_fix_status(
                 state="implementation_started",
                 summary="Build is running.",
@@ -100,6 +118,9 @@ recommended_next_action: fix
         self.assertIn("<!-- gc:github-pr-review", review_comment)
         self.assertIn("outcome: request_changes", review_comment)
         self.assertIn("human approved", review_comment)
+        self.assertIn("<!-- gc:github-issue-triage", triage_comment)
+        self.assertIn("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", triage_comment)
+        self.assertIn("needs_info", triage_comment)
         self.assertIn("<!-- gc:github-issue-fix-status", status_comment)
         self.assertIn("implementation_started", status_comment)
         self.assertIn("https://github.com/owner/repo/pull/9", status_comment)
