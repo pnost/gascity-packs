@@ -1,0 +1,111 @@
+description = """
+Targetless GitHub PR review adapter.
+
+This formula accepts only a full canonical GitHub pull request URL. It
+snapshots the PR through the pack wrapper, keys review attempts by PR head SHA,
+delegates judgment to the generic targetless `review` formula, renders one
+sticky normal PR comment, and never mutates code or submits formal GitHub review
+events.
+"""
+formula = "github-pr-review"
+version = 1
+contract = "graph.v2"
+target_required = false
+
+[vars]
+[vars.github_pr_url]
+description = "Full GitHub PR URL: https://github.com/<owner>/<repo>/pull/<number>."
+required = true
+
+[vars.artifact_root]
+description = "Optional artifact root. Defaults to the rig artifact root."
+default = ""
+
+[vars.context_path]
+description = "Optional context bundle path to pass through to the generic review formula."
+default = ""
+
+[vars.post_mode]
+description = "Comment posting policy: human_gate or auto."
+default = "human_gate"
+
+[[steps]]
+id = "snapshot"
+title = "Snapshot GitHub PR"
+description = """
+Validate `github_pr_url` with
+`{{pack_root}}/assets/scripts/github_api.py parse-url --kind pull`, reject
+shorthand inputs, then fetch the current PR source snapshot with
+`{{pack_root}}/assets/scripts/github_api.py pr-snapshot`.
+
+Create or refresh the canonical GitHub source bead for repo, PR number, kind,
+title, body hash, state, author, head SHA, head ref, base ref, and source URL.
+"""
+
+[[steps]]
+id = "reuse-current-head"
+title = "Reuse current head-SHA review when present"
+needs = ["snapshot"]
+description = """
+Look for the current head-SHA review artifact directory:
+`<artifact-root>/github/pulls/<owner>/<repo>/<number>/reviews/<head-sha>/`.
+
+If a validated review report/comment or waiting human gate already exists for
+the same repo, PR number, and head SHA, resume that attempt. If the stored
+sticky comment was deleted, create a replacement and update metadata.
+"""
+
+[[steps]]
+id = "run-review"
+title = "Run generic review"
+needs = ["reuse-current-head"]
+description = """
+Invoke the generic targetless `review` formula over the PR diff, branch, commit,
+or artifact subject for this head SHA. Pass through `context_path` when set.
+The adapter does not check out a mutation worktree, push commits, amend
+contributor branches, or create follow-up PRs.
+"""
+
+[[steps]]
+id = "render-comment"
+title = "Render sticky PR comment"
+needs = ["run-review"]
+description = """
+Validate the generic review verdict report and map it with
+`{{pack_root}}/assets/scripts/github_reports.py review-outcome`:
+`pass/none -> approve`, `fail/minor -> comment`, `fail/major -> request_changes`,
+and `fail/blocker -> block`. Render the normal PR comment with
+`{{pack_root}}/assets/scripts/github_reports.py render-review-comment`.
+"""
+
+[[steps]]
+id = "human-gate-comment"
+title = "Gate PR review comment"
+needs = ["render-comment"]
+condition = "{{post_mode}} == human_gate"
+description = """
+Send the rendered review report and comment to the human gate. The gate records
+decision and attachments only; this formula owns whether to post, revise, or
+stop after the gate result.
+"""
+
+[[steps]]
+id = "post-comment"
+title = "Create or update sticky PR comment"
+needs = ["render-comment", "human-gate-comment"]
+description = """
+Create or update exactly one normal PR comment for this head SHA through
+`{{pack_root}}/assets/scripts/github_api.py comment-create` or
+`{{pack_root}}/assets/scripts/github_api.py comment-update`. Do not submit
+formal GitHub review events in v0.
+"""
+
+[[steps]]
+id = "finalize"
+title = "Finalize PR review result"
+needs = ["post-comment"]
+description = """
+Write final run metadata containing source bead id, head SHA, review report
+path, rendered comment path, GitHub comment id/url, mapped outcome, post mode,
+and whether this run reused prior head-SHA output.
+"""

@@ -12,6 +12,9 @@ FORMULAS = {
     "do-work-item",
     "fix-convoy",
     "gap-analysis",
+    "github-issue-fix",
+    "github-issue-triage",
+    "github-pr-review",
     "implement",
     "publish",
     "review",
@@ -65,6 +68,24 @@ class FormulaAssetTests(unittest.TestCase):
             self.assertEqual(data["mode"], "report")
             self.assertFalse(data["target_required"])
             self.assertEqual([step["id"] for step in data["steps"]], ["validate-context", "write-report"])
+
+    def test_github_adapter_formulas_are_targetless_url_adapters(self) -> None:
+        root = pathlib.Path(__file__).resolve().parents[1]
+        expected = {
+            "github-issue-triage": ("github_issue_url", {"artifact_root", "post_mode"}),
+            "github-pr-review": ("github_pr_url", {"artifact_root", "context_path", "post_mode"}),
+            "github-issue-fix": ("github_issue_url", {"artifact_root", "mode", "pr_mode", "drain_policy"}),
+        }
+        for name, (url_var, optional_vars) in expected.items():
+            with self.subTest(name=name):
+                data = tomllib.loads((root / "formulas" / f"{name}.formula.toml").read_text(encoding="utf-8"))
+                self.assertEqual(data["contract"], "graph.v2")
+                self.assertFalse(data["target_required"])
+                self.assertTrue(data["vars"][url_var]["required"])
+                self.assertEqual(set(data["vars"]) - {url_var}, optional_vars)
+                text = (root / "formulas" / f"{name}.formula.toml").read_text(encoding="utf-8")
+                self.assertIn("{{pack_root}}/assets/scripts/github_api.py", text)
+                self.assertNotIn("{{pack_root}}/scripts/", text)
 
     def test_check_scripts_are_executable_and_portable(self) -> None:
         root = pathlib.Path(__file__).resolve().parents[1]
