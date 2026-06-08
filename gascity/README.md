@@ -9,8 +9,9 @@ City work:
 - Formula workflows opt into discovery with `[catalog]` metadata. The mayor
   discovers them with `gc formula catalog --json`, inspects them with
   `gc formula show <name> --json`, and launches them with `gc sling`.
-- Cataloged formulas cover implementation, build loops, targetless reports, and
-  GitHub adapter workflows. Helper/base formulas remain out of the catalog.
+- Cataloged formulas cover implementation, basic build loops, targetless
+  reports, and GitHub adapter workflows. Helper/base formulas remain out of
+  the catalog.
 
 Import it with the `gc` binding:
 
@@ -350,20 +351,23 @@ must still produce the `tasks.md` shape consumed by
 `assets/scripts/create_beads_from_tasks.py` and record the created convoy
 metadata expected by downstream build dispatch.
 
-### Build Run
+### Build Base And Basic
 
 Use this when the overall build loop needs different sequencing around
-implementation, gap analysis, review, fixes, or publish.
+implementation, gap analysis, review, fixes, or publish. `build-base` is the
+stable non-catalog skeleton. `build-basic` is the cataloged concrete
+implementation that extends it. Methodology packs should extend `build-base`
+directly and replace only the prompts or steps they customize.
 
 Stable basic override:
-`assets/workflows/build-run/review-loop.md`
+`assets/workflows/build-base/review-loop.md`
 
 Stable advanced steps:
-`build-run` steps `implement-initial`, `gap-loop`, `review-loop`, `publish`
+`build-base` steps `implement-initial`, `gap-loop`, `review-loop`, `publish`
 
 Basic example: tune review-loop evidence requirements.
 
-Create `assets/workflows/build-run/review-loop.md`:
+Create `assets/workflows/build-base/review-loop.md`:
 
 ```markdown
 Run implementation review with local release criteria.
@@ -381,9 +385,16 @@ Run implementation review with local release criteria.
 Advanced example: replace local review with an N-wide review and synthesize
 loop.
 
-Copy `build-run.formula.toml` and replace `review-loop`:
+Create a concrete formula that extends `build-base` and replaces only
+`review-loop`:
 
 ```toml
+formula = "company-build"
+extends = ["build-base"]
+version = 1
+contract = "graph.v2"
+target_required = true
+
 [[steps]]
 id = "review-loop"
 title = "Run company review quorum"
@@ -394,7 +405,7 @@ metadata = { "gc.run_target" = "gc.review-synthesizer" }
 
 The expansion can run several independent reviewers, synthesize required
 findings, open a fix convoy, and loop. Its final output must be compatible with
-the base build-run expectation: pass means publish may run; fail means the
+the base build contract: pass means publish may run; fail means the
 workflow records actionable blocking findings.
 
 ### Direct Implementation

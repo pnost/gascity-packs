@@ -8,6 +8,8 @@ import unittest
 
 
 FORMULAS = {
+    "build-base",
+    "build-basic",
     "build-run",
     "design-review",
     "do-work",
@@ -42,7 +44,7 @@ ROLE_AGENTS = {
 }
 
 CATALOG_FORMULAS = {
-    "build-run",
+    "build-basic",
     "design-review",
     "gap-analysis",
     "github-issue-fix",
@@ -411,14 +413,26 @@ class FormulaAssetTests(unittest.TestCase):
     def test_wrapper_formulas_route_role_agents(self) -> None:
         root = pathlib.Path(__file__).resolve().parents[1]
 
-        build_run = tomllib.loads((root / "formulas" / "build-run.formula.toml").read_text(encoding="utf-8"))
-        self.assertNotIn("infra_target", build_run["vars"])
-        self.assertNotIn("hard_target", build_run["vars"])
-        self.assertEqual(build_run["steps"][0]["metadata"]["gc.run_target"], "gc.implementation-worker")
-        self.assertEqual(build_run["steps"][1]["metadata"]["gc.run_target"], "gc.gap-analyst")
-        self.assertEqual(build_run["steps"][2]["metadata"]["gc.run_target"], "gc.implementation-reviewer")
-        self.assertEqual(build_run["steps"][3]["metadata"]["gc.run_target"], "gc.run-operator")
-        self.assertEqual(build_run["steps"][4]["metadata"]["gc.run_target"], "gc.publisher")
+        build_base = load_formula(root, "build-base")
+        self.assertTrue(build_base["internal"])
+        self.assertNotIn("catalog", build_base)
+        self.assertNotIn("infra_target", build_base["vars"])
+        self.assertNotIn("hard_target", build_base["vars"])
+        self.assertEqual(build_base["steps"][0]["metadata"]["gc.run_target"], "gc.implementation-worker")
+        self.assertEqual(build_base["steps"][1]["metadata"]["gc.run_target"], "gc.gap-analyst")
+        self.assertEqual(build_base["steps"][2]["metadata"]["gc.run_target"], "gc.implementation-reviewer")
+        self.assertEqual(build_base["steps"][3]["metadata"]["gc.run_target"], "gc.run-operator")
+        self.assertEqual(build_base["steps"][4]["metadata"]["gc.run_target"], "gc.publisher")
+
+        build_basic = load_formula(root, "build-basic")
+        self.assertEqual(build_basic["extends"], ["build-base"])
+        self.assertEqual(build_basic["catalog"]["name"], "build-basic")
+        build_basic_resolved = resolve_formula(root, "build-basic")
+        self.assertEqual([step["id"] for step in build_basic_resolved["steps"]], [step["id"] for step in build_base["steps"]])
+
+        build_run = load_formula(root, "build-run")
+        self.assertEqual(build_run["extends"], ["build-basic"])
+        self.assertNotIn("catalog", build_run)
 
         issue_fix = resolve_formula(root, "github-issue-fix")
         self.assertNotIn("infra_target", issue_fix["vars"])
@@ -436,6 +450,9 @@ class FormulaAssetTests(unittest.TestCase):
         self.assertEqual(route_by_step["build"], "gc.implementation-worker")
         self.assertEqual(route_by_step["publish-pr"], "gc.publisher")
         self.assertEqual(route_by_step["finalize"], "gc.run-operator")
+        build_step = node_description(root, next(step for step in issue_fix["steps"] if step["id"] == "build"))
+        self.assertIn("`build-basic`", build_step)
+        self.assertNotIn("`build-run`", build_step)
 
         design_review = load_formula(root, "github-issue-fix-design-review-work")
         self.assertEqual(set(design_review.get("vars", {})), {"mode"})

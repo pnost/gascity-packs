@@ -8,7 +8,7 @@ If initial_implementation_workflow_id is non-empty, this is a continuation of
 a standalone implement run. Do not skip blindly. First verify all of:
 - the referenced bead exists and is a closed graph.v2 workflow
 - its title/formula/root key identifies the `implement` formula
-- gc.input_convoy_id matches this build-run target convoy
+- gc.input_convoy_id matches this build workflow target convoy
 - gc.outcome is pass
 - initial_summary_path {{initial_summary_path}} is non-empty, exists, and is
   readable

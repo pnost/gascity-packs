@@ -1,0 +1,17 @@
+description = """
+Basic concrete build workflow.
+
+This formula demonstrates the default implementation of `build-base`: drain the
+initial implementation convoy, run gap-analysis and review fix loops, write a
+final report, and optionally publish. Methodology-specific packs should extend
+`build-base` directly and replace only the steps or assets they customize.
+"""
+formula = "build-basic"
+extends = ["build-base"]
+version = 1
+contract = "graph.v2"
+target_required = true
+
+[catalog]
+name = "build-basic"
+description = "Run the basic implementation, gap-analysis, review, fix, and optional publish workflow."

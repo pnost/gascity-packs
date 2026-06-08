@@ -39,7 +39,7 @@ description = "PR publication mode: none, draft, or ready."
 default = "none"
 
 [vars.drain_policy]
-description = "Implementation drain policy inherited by build-run and fix convoys."
+description = "Implementation drain policy inherited by build-basic and fix convoys."
 default = "separate"
 
 [[steps]]
