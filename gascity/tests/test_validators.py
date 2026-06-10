@@ -10,6 +10,7 @@ import io
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "assets" / "scripts"))
 
 import validate_context_bundle as context_validator
+import validate_build_artifact as build_artifact_validator
 import validate_verdict_report as verdict_validator
 
 
@@ -198,6 +199,226 @@ class ContextBundleValidatorTests(unittest.TestCase):
 
             with redirect_stderr(stderr), redirect_stdout(io.StringIO()):
                 code = context_validator.main([str(bundle)])
+
+            self.assertEqual(code, 1)
+            self.assertIn("error:", stderr.getvalue())
+            self.assertNotIn("Traceback", stderr.getvalue())
+
+
+class BuildArtifactValidatorTests(unittest.TestCase):
+    SCHEMA_SECTIONS = {
+        "gc.build.requirements.v1": [
+            "Problem Statement",
+            "W6H",
+            "User Stories",
+            "Technical Stories",
+            "Behavior Requirements",
+            "Example Mapping",
+            "Acceptance Criteria",
+            "Out Of Scope",
+            "Open Questions",
+        ],
+        "gc.build.plan.v1": [
+            "Summary",
+            "Current System",
+            "Proposed Implementation",
+            "Non-Goals",
+            "Verification",
+        ],
+        "gc.build.decomposition.v1": [
+            "Summary",
+            "Selected Downstream Formulas",
+            "Implementation Convoy",
+            "Work Items",
+        ],
+        "gc.build.implementation-summary.v1": [
+            "Summary",
+            "Intended Behavior",
+            "Changed Files",
+            "Verification",
+            "Remaining Risks",
+        ],
+        "gc.build.review.v1": [
+            "Verdict",
+            "Findings",
+            "Verification",
+        ],
+        "gc.build.final-report.v1": [
+            "Summary",
+            "Outcome",
+            "Artifacts",
+            "Remaining Risks",
+        ],
+    }
+    SCHEMA_STATUS = {
+        "gc.build.requirements.v1": "approved",
+        "gc.build.plan.v1": "approved",
+        "gc.build.decomposition.v1": "approved",
+        "gc.build.implementation-summary.v1": "approved",
+        "gc.build.review.v1": "approved",
+        "gc.build.final-report.v1": "approved",
+    }
+    SCHEMA_FILES = {
+        "gc.build.requirements.v1": "requirements.v1.yaml",
+        "gc.build.plan.v1": "plan.v1.yaml",
+        "gc.build.decomposition.v1": "decomposition.v1.yaml",
+        "gc.build.implementation-summary.v1": "implementation-summary.v1.yaml",
+        "gc.build.review.v1": "review.v1.yaml",
+        "gc.build.final-report.v1": "final-report.v1.yaml",
+    }
+    SCHEMA_ROOT = pathlib.Path(__file__).resolve().parents[1] / "schemas" / "build"
+    VALIDATOR_SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "assets" / "scripts" / "validate_build_artifact.py"
+
+    def valid_artifact(self, schema: str = "gc.build.requirements.v1") -> str:
+        sections = []
+        for section in self.SCHEMA_SECTIONS[schema]:
+            content = f"{section} content."
+            if section in {"Example Mapping", "Summary", "Verdict"}:
+                content += (
+                    "\n\n| ID | Status |\n"
+                    "| --- | --- |\n"
+                    "| GC-METH-001 | covered |\n"
+                    "| GC-METH-012 | deferred |"
+                )
+            sections.append(f"## {section}\n\n{content}")
+        body = "\n\n".join(sections)
+        return f"""---
+schema: {schema}
+workflow:
+  id: build-20260609-001
+  formula: build-basic
+methodology:
+  pack: gascity
+  name: build-basic
+producer:
+  formula: planning-base
+  stage: requirements
+  attempt: 1
+status: {self.SCHEMA_STATUS[schema]}
+trace:
+  upstream:
+    - path: requirements.after.md
+      hash: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  coverage:
+    - id: GC-METH-001
+      status: covered
+    - id: GC-METH-012
+      status: deferred
+      rationale: Derived-pack compatibility is verified by a later work item.
+---
+
+{body}
+"""
+
+    def test_build_artifact_accepts_valid_minimal_artifacts_for_all_base_schemas(self) -> None:
+        for schema in self.SCHEMA_SECTIONS:
+            with self.subTest(schema=schema):
+                artifact = build_artifact_validator.validate_artifact_text(
+                    self.valid_artifact(schema),
+                    expected_schema=schema,
+                )
+
+                self.assertEqual(artifact.schema_id, schema)
+                self.assertEqual([entry["id"] for entry in artifact.coverage], ["GC-METH-001", "GC-METH-012"])
+
+    def test_build_artifact_rejects_missing_front_matter_and_wrong_schema(self) -> None:
+        with self.assertRaisesRegex(build_artifact_validator.ValidationError, "front matter"):
+            build_artifact_validator.validate_artifact_text("# Missing front matter\n", expected_schema="gc.build.requirements.v1")
+
+        with self.assertRaisesRegex(build_artifact_validator.ValidationError, "schema"):
+            build_artifact_validator.validate_artifact_text(
+                self.valid_artifact("gc.build.plan.v1"),
+                expected_schema="gc.build.requirements.v1",
+            )
+
+    def test_build_artifact_rejects_missing_upstream_hash(self) -> None:
+        text = self.valid_artifact().replace("      hash: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n", "")
+
+        with self.assertRaisesRegex(build_artifact_validator.ValidationError, "hash"):
+            build_artifact_validator.validate_artifact_text(text, expected_schema="gc.build.requirements.v1")
+
+    def test_build_artifact_rejects_invalid_coverage_status_and_missing_rationale(self) -> None:
+        invalid_status = self.valid_artifact().replace("status: deferred", "status: waiting", 1)
+        missing_rationale = self.valid_artifact().replace(
+            "      rationale: Derived-pack compatibility is verified by a later work item.\n",
+            "",
+        )
+
+        with self.assertRaisesRegex(build_artifact_validator.ValidationError, "coverage"):
+            build_artifact_validator.validate_artifact_text(invalid_status, expected_schema="gc.build.requirements.v1")
+        with self.assertRaisesRegex(build_artifact_validator.ValidationError, "rationale"):
+            build_artifact_validator.validate_artifact_text(missing_rationale, expected_schema="gc.build.requirements.v1")
+
+    def test_build_artifact_rejects_markdown_yaml_coverage_mismatch(self) -> None:
+        text = self.valid_artifact().replace("| GC-METH-012 | deferred |", "| GC-METH-012 | covered |")
+
+        with self.assertRaisesRegex(build_artifact_validator.ValidationError, "markdown coverage"):
+            build_artifact_validator.validate_artifact_text(text, expected_schema="gc.build.requirements.v1")
+
+    def test_build_artifact_validator_and_schema_files_are_present(self) -> None:
+        self.assertTrue(self.VALIDATOR_SCRIPT.is_file(), f"missing {self.VALIDATOR_SCRIPT}")
+        for schema_id, filename in self.SCHEMA_FILES.items():
+            with self.subTest(schema=schema_id):
+                self.assertTrue((self.SCHEMA_ROOT / filename).is_file(), f"missing {self.SCHEMA_ROOT / filename}")
+
+    def test_build_artifact_schemas_keep_producer_metadata_neutral(self) -> None:
+        for schema_id in self.SCHEMA_FILES:
+            with self.subTest(schema=schema_id):
+                schema = build_artifact_validator.load_schema(schema_id)
+
+                leaves = {str(field).split(".")[-1].lower() for field in schema["required_front_matter"]}
+                self.assertFalse(leaves & build_artifact_validator.FORBIDDEN_REQUIRED_FIELD_NAMES)
+
+    def test_build_artifact_rejects_schema_requiring_role_fields(self) -> None:
+        for field in ("owner", "stage-owner", "persona", "producer.role"):
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(build_artifact_validator.ValidationError, "must not require"):
+                    build_artifact_validator.validate_schema_definition(
+                        {"schema_id": "gc.build.requirements.v1", "required_front_matter": ["schema", field]}
+                    )
+
+    def test_build_artifact_statuses_follow_base_approval_states(self) -> None:
+        review_questions = self.valid_artifact("gc.build.review.v1").replace(
+            "\nstatus: approved\n", "\nstatus: questions\n"
+        )
+        summary_complete = self.valid_artifact("gc.build.implementation-summary.v1").replace(
+            "\nstatus: approved\n", "\nstatus: complete\n"
+        )
+
+        artifact = build_artifact_validator.validate_artifact_text(
+            review_questions, expected_schema="gc.build.review.v1"
+        )
+        self.assertEqual(artifact.front_matter["status"], "questions")
+        with self.assertRaisesRegex(build_artifact_validator.ValidationError, "status"):
+            build_artifact_validator.validate_artifact_text(
+                summary_complete, expected_schema="gc.build.implementation-summary.v1"
+            )
+
+    def test_build_artifact_requires_coverage_for_declared_upstream_ids(self) -> None:
+        declared = self.valid_artifact().replace(
+            "      hash: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+            "      hash: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+            "      ids:\n"
+            "        - GC-METH-001\n"
+            "        - GC-METH-012\n",
+        )
+        missing = declared.replace("        - GC-METH-012\n", "        - GC-METH-012\n        - GC-METH-099\n")
+
+        artifact = build_artifact_validator.validate_artifact_text(declared, expected_schema="gc.build.requirements.v1")
+        self.assertEqual([entry["id"] for entry in artifact.coverage], ["GC-METH-001", "GC-METH-012"])
+        with self.assertRaisesRegex(build_artifact_validator.ValidationError, "GC-METH-099"):
+            build_artifact_validator.validate_artifact_text(missing, expected_schema="gc.build.requirements.v1")
+
+    def test_build_artifact_cli_reports_errors_without_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = pathlib.Path(tmp) / "requirements.md"
+            report.write_text("---\nschema: [\n---\n", encoding="utf-8")
+            stderr = io.StringIO()
+
+            with redirect_stderr(stderr), redirect_stdout(io.StringIO()):
+                code = build_artifact_validator.main(
+                    ["--schema", "gc.build.requirements.v1", "--path", str(report)]
+                )
 
             self.assertEqual(code, 1)
             self.assertIn("error:", stderr.getvalue())

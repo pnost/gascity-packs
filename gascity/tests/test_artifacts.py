@@ -10,6 +10,7 @@ from contextlib import redirect_stderr, redirect_stdout
 
 
 SCRIPT_PATH = pathlib.Path(__file__).resolve().parents[1] / "assets" / "scripts" / "artifacts.py"
+BUILD_SCHEMA_ROOT = pathlib.Path(__file__).resolve().parents[1] / "schemas" / "build"
 
 
 def load_artifacts_module():
@@ -174,6 +175,22 @@ class ArtifactHelperTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             with self.assertRaises(ValueError):
                 module.resolve_artifact_path(temp_dir, "../outside")
+
+    def test_build_artifact_schema_files_have_stable_ids(self) -> None:
+        expected = {
+            "requirements.v1.yaml": "gc.build.requirements.v1",
+            "plan.v1.yaml": "gc.build.plan.v1",
+            "decomposition.v1.yaml": "gc.build.decomposition.v1",
+            "implementation-summary.v1.yaml": "gc.build.implementation-summary.v1",
+            "review.v1.yaml": "gc.build.review.v1",
+            "final-report.v1.yaml": "gc.build.final-report.v1",
+        }
+
+        for filename, schema_id in expected.items():
+            with self.subTest(filename=filename):
+                path = BUILD_SCHEMA_ROOT / filename
+                self.assertTrue(path.is_file(), f"missing {path}")
+                self.assertIn(f"schema_id: {schema_id}", path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
