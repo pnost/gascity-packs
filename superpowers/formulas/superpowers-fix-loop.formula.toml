@@ -1,0 +1,22 @@
+description = """
+Superpowers implementation of the fix-loop-base methodology contract.
+"""
+formula = "superpowers-fix-loop"
+version = 1
+contract = "graph.v2"
+extends = ["fix-loop-base"]
+target_required = false
+internal = true
+
+[vars]
+[vars.implementation_formula]
+description = "Superpowers implementation formula used for fix work."
+default = "superpowers-implementation"
+
+[vars.code_review_formula]
+description = "Superpowers review formula used after fixes."
+default = "superpowers-review"
+
+[vars.implementation_target]
+description = "Superpowers task implementation role."
+default = "superpowers.implementer"

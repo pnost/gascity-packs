@@ -52,9 +52,18 @@ metadata = { "gc.run_target" = "{{implementation_target}}", "gc.continuation_gro
 description_file = "../assets/workflows/superpowers-development/verify-test-passes.md"
 
 [[steps]]
+id = "task-review"
+title = "Run Superpowers task fanout review"
+needs = ["verify-test-passes"]
+metadata = { "gc.run_target" = "superpowers.code-quality-reviewer" }
+expand = "superpowers-task-review"
+expand_vars = { implementation_target = "{{implementation_target}}" }
+description_file = "../assets/workflows/superpowers-development/task-review.md"
+
+[[steps]]
 id = "record-item-result"
 title = "Record Superpowers task result"
-needs = ["verify-test-passes"]
+needs = ["task-review"]
 metadata = { "gc.run_target" = "{{implementation_target}}", "gc.continuation_group" = "superpowers-task-{{issue}}" }
 description_file = "../assets/workflows/superpowers-development/record-item-result.md"
 

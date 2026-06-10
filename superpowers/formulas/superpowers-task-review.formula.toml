@@ -1,0 +1,71 @@
+description = """
+Superpowers per-task review expansion.
+
+This converts subagent-driven-development's per-task spec-compliance and
+code-quality reviewer handoff into explicit Gas City graph lanes. The
+implementation lane applies findings; provider-native subagents are not used.
+"""
+formula = "superpowers-task-review"
+type = "expansion"
+version = 1
+contract = "graph.v2"
+
+[vars]
+[vars.implementation_target]
+description = "Superpowers task implementation role used for item review-fix lanes."
+default = "superpowers.implementer"
+
+[[template]]
+id = "{target}.setup-superpowers-task-review"
+title = "Prepare Superpowers task review"
+metadata = { "gc.run_target" = "gc.run-operator" }
+description_file = "../assets/workflows/superpowers-task-review/{target}.setup-superpowers-task-review.md"
+
+[[template]]
+id = "{target}.superpowers-task-review-loop"
+title = "Run Superpowers task review until approved"
+needs = ["{target}.setup-superpowers-task-review"]
+metadata = { "gc.run_target" = "gc.run-operator" }
+description_file = "../assets/workflows/superpowers-task-review/{target}.superpowers-task-review-loop.md"
+
+[template.check]
+max_attempts = 6
+
+[template.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/implementation-review-approved.sh"
+timeout = "10m"
+
+[[template.children]]
+id = "{target}.spec-compliance-review"
+title = "Superpowers task review: spec compliance"
+metadata = { "gc.run_target" = "superpowers.spec-reviewer" }
+description_file = "../assets/workflows/superpowers-task-review/{target}.spec-compliance-review.md"
+
+[[template.children]]
+id = "{target}.apply-spec-compliance-findings"
+title = "Apply Superpowers spec-compliance findings"
+needs = ["{target}.spec-compliance-review"]
+metadata = { "gc.run_target" = "{implementation_target}", "gc.continuation_group" = "superpowers-item-spec-fixes" }
+description_file = "../assets/workflows/superpowers-task-review/{target}.apply-spec-compliance-findings.md"
+
+[[template.children]]
+id = "{target}.code-quality-review"
+title = "Superpowers task review: code quality"
+needs = ["{target}.apply-spec-compliance-findings"]
+metadata = { "gc.run_target" = "superpowers.code-quality-reviewer" }
+description_file = "../assets/workflows/superpowers-task-review/{target}.code-quality-review.md"
+
+[[template.children]]
+id = "{target}.apply-code-quality-findings"
+title = "Apply Superpowers code-quality findings"
+needs = ["{target}.code-quality-review"]
+metadata = { "gc.run_target" = "{implementation_target}", "gc.continuation_group" = "superpowers-item-quality-fixes" }
+description_file = "../assets/workflows/superpowers-task-review/{target}.apply-code-quality-findings.md"
+
+[[template]]
+id = "{target}"
+title = "Finalize Superpowers task review"
+needs = ["{target}.superpowers-task-review-loop"]
+metadata = { "gc.run_target" = "gc.run-operator" }
+description_file = "../assets/workflows/superpowers-task-review/{target}.md"

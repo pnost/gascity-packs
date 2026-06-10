@@ -1,0 +1,15 @@
+description = """
+Superpowers implementation of the decomposition-base methodology contract.
+"""
+formula = "superpowers-decomposition"
+version = 1
+contract = "graph.v2"
+extends = ["decomposition-base"]
+target_required = false
+internal = true
+
+[[steps]]
+id = "decompose"
+title = "Create Superpowers implementation convoy"
+metadata = { "gc.run_target" = "gc.task-decomposer" }
+description_file = "../assets/workflows/superpowers-decomposition/decompose.md"

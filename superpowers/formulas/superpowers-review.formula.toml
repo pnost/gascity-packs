@@ -1,0 +1,24 @@
+description = """
+Superpowers implementation of the code-review-base methodology contract.
+"""
+formula = "superpowers-review"
+version = 1
+contract = "graph.v2"
+extends = ["code-review-base"]
+target_required = false
+internal = true
+mode = "report"
+
+[vars]
+[vars.implementation_target]
+description = "Superpowers task implementation role used for review fixes."
+default = "superpowers.implementer"
+
+[[steps]]
+id = "write-report"
+title = "Run Superpowers review"
+needs = ["validate-context"]
+metadata = { "gc.run_target" = "superpowers.code-reviewer" }
+expand = "superpowers-code-review"
+expand_vars = { implementation_target = "{{implementation_target}}" }
+description_file = "../assets/workflows/superpowers-review/write-report.md"
