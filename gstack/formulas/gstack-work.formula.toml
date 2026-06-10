@@ -1,0 +1,20 @@
+description = """
+gstack implementation item formula.
+"""
+formula = "gstack-work"
+version = 1
+contract = "graph.v2"
+extends = ["do-work"]
+target_required = true
+
+[vars]
+[vars.implementation_target]
+description = "gstack task implementation role."
+default = "gstack.implementer"
+
+[[steps]]
+id = "implement"
+title = "Implement gstack work"
+needs = ["prepare-worktree"]
+metadata = { "gc.run_target" = "{{implementation_target}}" }
+description_file = "../assets/workflows/gstack-work/implement.md"

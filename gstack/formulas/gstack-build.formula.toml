@@ -50,11 +50,11 @@ description = "gstack review-fix methodology formula."
 default = "gstack-fix-loop"
 
 [vars.interaction_mode]
-description = "Human-gate posture: interactive or autonomous."
+description = "Workflow interaction posture: interactive, autonomous, or headless."
 default = "interactive"
 
 [vars.review_mode]
-description = "Review authority: interactive, handoff, or report."
+description = "Review authority: report, agent, or interactive."
 default = "interactive"
 
 [[steps]]

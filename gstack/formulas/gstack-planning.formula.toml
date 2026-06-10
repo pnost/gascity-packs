@@ -1,0 +1,37 @@
+description = """
+gstack implementation of the planning-base methodology contract.
+"""
+formula = "gstack-planning"
+version = 1
+contract = "graph.v2"
+extends = ["planning-base"]
+target_required = false
+internal = true
+
+[vars]
+[vars.interaction_mode]
+description = "Workflow interaction posture: interactive, autonomous, or headless."
+default = "interactive"
+
+[[steps]]
+id = "requirements"
+title = "gstack office-hours requirements"
+needs = ["prepare-planning"]
+metadata = { "gc.run_target" = "gstack.office-hours" }
+description_file = "../assets/workflows/gstack-planning/requirements.md"
+
+[[steps]]
+id = "plan"
+title = "gstack autoplan draft"
+needs = ["requirements"]
+metadata = { "gc.run_target" = "gstack.founder-reviewer" }
+description_file = "../assets/workflows/gstack-planning/plan.md"
+
+[[steps]]
+id = "plan-review"
+title = "gstack plan review fanout"
+needs = ["plan"]
+metadata = { "gc.run_target" = "gstack.review-synthesizer" }
+expand = "gstack-plan-review"
+expand_vars = { interaction_mode = "{{interaction_mode}}" }
+description_file = "../assets/workflows/gstack-planning/plan-review.md"

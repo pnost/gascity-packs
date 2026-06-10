@@ -1,0 +1,3 @@
+description = "gstack implementer"
+scope = "rig"
+fallback = true
