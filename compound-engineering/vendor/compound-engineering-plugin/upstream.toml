@@ -9,5 +9,7 @@ vendored_paths = [
   "plugins/compound-engineering/skills/ce-work",
   "plugins/compound-engineering/skills/ce-code-review",
   "plugins/compound-engineering/skills/ce-compound",
+  # agents/ is vendored selectively: only the persona files adapted into
+  # pack review lanes or pack agents are kept as pristine baselines.
   "plugins/compound-engineering/agents",
 ]
