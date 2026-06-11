@@ -26,8 +26,12 @@ func TestGascityEmbedsPackContent(t *testing.T) {
 	for _, rel := range []string{
 		"pack.toml",
 		"formulas/implement.formula.toml",
-		"skills/plan/SKILL.md",
-		"scripts/checks/gap-analysis-approved.sh",
+		"formulas/build-base.formula.toml",
+		"formulas/build-basic.formula.toml",
+		"skills/mayor/SKILL.md",
+		"assets/scripts/checks/gap-analysis-approved.sh",
+		"assets/scripts/checks/build-artifact-valid.sh",
+		"roles/pack.toml",
 	} {
 		if _, err := fs.Stat(pack, rel); err != nil {
 			t.Errorf("gascity pack missing %s: %v", rel, err)

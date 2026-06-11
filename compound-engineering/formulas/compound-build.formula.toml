@@ -1,0 +1,153 @@
+description = """
+Compound Engineering implementation of the Gas City build-base contract.
+
+This formula vendors the relevant Compound Engineering skills and maps them
+onto build-base stages. There is no separate compound stage; compound resolution
+is a finalize-stage behavior.
+"""
+formula = "compound-build"
+version = 1
+contract = "graph.v2"
+extends = ["build-base"]
+target_required = true
+
+[catalog]
+name = "compound-build"
+description = "Run build-base with vendored Compound Engineering brainstorm, plan, work, review, and compound finalization skills."
+
+[metadata.gc.methodology]
+allowed_drain_policies = ["separate", "same-session"]
+implementation_strategy = "drain"
+interaction_modes = ["interactive", "autonomous", "headless"]
+review_modes = ["report", "agent", "interactive"]
+
+[vars]
+[vars.implementation_target]
+description = "Compound Engineering task implementation role."
+default = "compound-engineering.ce-work"
+
+[vars.planning_formula]
+description = "Compound Engineering planning methodology formula."
+default = "compound-planning"
+
+[vars.decomposition_formula]
+description = "Compound Engineering decomposition methodology formula."
+default = "compound-decomposition"
+
+[vars.implementation_formula]
+description = "Compound Engineering implementation entry formula."
+default = "compound-implementation"
+
+[vars.implementation_item_formula]
+description = "Compound Engineering single-item implementation formula."
+default = "compound-work-item"
+
+[vars.code_review_formula]
+description = "Compound Engineering code-review methodology formula."
+default = "compound-review"
+
+[vars.review_fix_formula]
+description = "Compound Engineering review-fix methodology formula."
+default = "compound-fix-loop"
+
+[[steps]]
+id = "requirements"
+title = "Compound brainstorm requirements"
+needs = ["prepare"]
+metadata = { "gc.run_target" = "compound-engineering.ce-brainstorm", "gc.build.artifact_schema" = "gc.build.requirements.v1", "gc.build.artifact_path_keys" = "gc.build.requirements_path,gc.var.requirements_path" }
+description_file = "../assets/workflows/compound-build/requirements.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
+
+[[steps]]
+id = "plan"
+title = "Compound plan"
+needs = ["requirements"]
+metadata = { "gc.run_target" = "compound-engineering.ce-plan", "gc.build.artifact_schema" = "gc.build.plan.v1", "gc.build.artifact_path_keys" = "gc.build.plan_path,gc.var.plan_path" }
+description_file = "../assets/workflows/compound-build/plan.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
+
+[[steps]]
+id = "plan-review"
+title = "Compound plan review"
+needs = ["plan"]
+metadata = { "gc.run_target" = "compound-engineering.ce-plan-review-synthesizer" }
+expand = "compound-plan-review"
+description_file = "../assets/workflows/compound-build/plan-review.md"
+
+[[steps]]
+id = "implement"
+title = "Drain Compound Engineering work"
+needs = ["decompose"]
+condition = "{{drain_policy}} == separate"
+metadata = { "gc.run_target" = "{{implementation_target}}" }
+description_file = "../assets/workflows/compound-build/implement.md"
+
+[steps.drain]
+context = "separate"
+formula = "compound-work"
+member_access = "exclusive"
+
+[[steps]]
+id = "implement-same-session"
+title = "Drain Compound Engineering work in one shared session"
+needs = ["decompose"]
+condition = "{{drain_policy}} == same-session"
+metadata = { "gc.run_target" = "{{implementation_target}}" }
+description_file = "../assets/workflows/compound-build/implement-same-session.md"
+
+[steps.drain]
+context = "shared"
+formula = "compound-work-item"
+on_item_failure = "skip_remaining"
+member_access = "exclusive"
+
+[steps.drain.item]
+single_lane = true
+
+[[steps]]
+id = "review"
+title = "Compound code review"
+needs = ["implement", "implement-same-session"]
+metadata = { "gc.run_target" = "compound-engineering.ce-code-review-synthesizer", "gc.build.artifact_schema" = "gc.build.review.v1", "gc.build.artifact_path_keys" = "gc.build.review_report_path" }
+expand = "compound-code-review"
+expand_vars = { implementation_target = "{{implementation_target}}" }
+description_file = "../assets/workflows/compound-build/review.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
+
+[[steps]]
+id = "finalize"
+title = "Compound finalization"
+needs = ["review"]
+metadata = { "gc.run_target" = "compound-engineering.ce-compound", "gc.build.artifact_schema" = "gc.build.final-report.v1", "gc.build.artifact_path_keys" = "gc.build.final_report_path" }
+expand = "compound-resolution"
+description_file = "../assets/workflows/compound-build/finalize.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
+

@@ -1,0 +1,3 @@
+description = "gstack engineering plan reviewer"
+scope = "rig"
+fallback = true

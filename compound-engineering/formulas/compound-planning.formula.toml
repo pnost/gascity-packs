@@ -1,0 +1,47 @@
+description = """
+Compound Engineering implementation of the planning-base methodology contract.
+"""
+formula = "compound-planning"
+version = 1
+contract = "graph.v2"
+extends = ["planning-base"]
+target_required = false
+internal = true
+
+[[steps]]
+id = "requirements"
+title = "Compound brainstorm requirements"
+needs = ["prepare-planning"]
+metadata = { "gc.run_target" = "compound-engineering.ce-brainstorm", "gc.build.artifact_schema" = "gc.build.requirements.v1", "gc.build.artifact_path_keys" = "gc.build.requirements_path,gc.var.requirements_path" }
+description_file = "../assets/workflows/compound-planning/requirements.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
+
+[[steps]]
+id = "plan"
+title = "Compound plan"
+needs = ["requirements"]
+metadata = { "gc.run_target" = "compound-engineering.ce-plan", "gc.build.artifact_schema" = "gc.build.plan.v1", "gc.build.artifact_path_keys" = "gc.build.plan_path,gc.var.plan_path" }
+description_file = "../assets/workflows/compound-planning/plan.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
+
+[[steps]]
+id = "plan-review"
+title = "Compound plan review"
+needs = ["plan"]
+metadata = { "gc.run_target" = "compound-engineering.ce-plan-review-synthesizer" }
+expand = "compound-plan-review"
+description_file = "../assets/workflows/compound-planning/plan-review.md"

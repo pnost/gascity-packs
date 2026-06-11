@@ -1,0 +1,32 @@
+description = """
+Compound Engineering item implementation formula for separate drain context.
+
+This runs one implementation convoy member through the vendored ce-work role on
+top of Gas City's source-anchor worktree lifecycle.
+"""
+formula = "compound-work"
+version = 1
+contract = "graph.v2"
+extends = ["do-work"]
+target_required = true
+
+[vars]
+[vars.implementation_target]
+description = "Compound Engineering implementation role."
+default = "compound-engineering.ce-work"
+
+[[steps]]
+id = "implement"
+title = "Implement Compound work item"
+needs = ["prepare-worktree"]
+metadata = { "gc.run_target" = "{{implementation_target}}", "gc.build.artifact_schema" = "gc.build.implementation-summary.v1", "gc.build.artifact_path_keys" = "gc.implementation.summary_path,gc.build.implementation_summary_path,gc.var.summary_path" }
+description_file = "../assets/workflows/compound-work/implement.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
+

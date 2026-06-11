@@ -1,0 +1,30 @@
+description = """
+BMAD implementation of the decomposition-base methodology contract.
+"""
+formula = "bmad-decomposition"
+version = 1
+contract = "graph.v2"
+extends = ["decomposition-base"]
+target_required = false
+internal = true
+
+[[steps]]
+id = "decompose"
+title = "BMAD epics and stories"
+metadata = { "gc.run_target" = "bmad.epic-story-decomposer", "gc.build.artifact_schema" = "gc.build.decomposition.v1", "gc.build.artifact_path_keys" = "gc.build.decomposition_path,gc.var.decomposition_path" }
+description_file = "../assets/workflows/bmad-decomposition/decompose.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
+
+[[steps]]
+id = "implementation-readiness"
+title = "BMAD implementation readiness"
+needs = ["decompose"]
+metadata = { "gc.run_target" = "bmad.readiness-reviewer" }
+description_file = "../assets/workflows/bmad-decomposition/implementation-readiness.md"
