@@ -71,8 +71,16 @@ description_file = "../assets/workflows/build-from-decompose-base/prepare-decomp
 id = "decompose"
 title = "Create continuation implementation convoy"
 needs = ["prepare-decompose"]
-metadata = { "gc.run_target" = "gc.task-decomposer" }
+metadata = { "gc.run_target" = "gc.task-decomposer", "gc.build.artifact_schema" = "gc.build.decomposition.v1", "gc.build.artifact_path_keys" = "gc.build.decomposition_path,gc.var.decomposition_path" }
 description_file = "../assets/workflows/build-from-decompose-base/decompose.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
 
 [[steps]]
 id = "prepare-convoy"

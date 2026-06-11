@@ -364,6 +364,91 @@ class DerivedPackCompatibilityTests(unittest.TestCase):
                     f"{pack_name}/README.md must reference the pack ledger",
                 )
 
+    def test_derived_producer_stages_keep_artifact_validation_gates(self) -> None:
+        """Step overrides replace base steps wholesale, so every derived
+        producer override must re-declare the shared artifact-validation gate
+        (GC-BF-BR-010). bmad's drain item formulas deliberately swap in the
+        implementation-review-approved.sh methodology check and are asserted
+        as such."""
+        build_gates = {
+            "requirements": base_contract.REQUIREMENTS_GATE,
+            "plan": base_contract.PLAN_GATE,
+            "decompose": base_contract.DECOMPOSITION_GATE,
+            "review": base_contract.BUILD_REVIEW_GATE,
+            "finalize": base_contract.FINAL_REPORT_GATE,
+        }
+        for pack_name, expected in DERIVED_PACKS.items():
+            formula_gates = {
+                expected["formula"]: build_gates,
+                expected["planning_formula"]: {
+                    "requirements": base_contract.REQUIREMENTS_GATE,
+                    "plan": base_contract.PLAN_GATE,
+                },
+                expected["decomposition_formula"]: {
+                    "decompose": base_contract.DECOMPOSITION_GATE,
+                },
+                expected["code_review_entry_formula"]: {
+                    "write-report": base_contract.REVIEW_REPORT_GATE,
+                },
+            }
+            if pack_name != "bmad":
+                formula_gates[expected["implementation_formula"]] = {
+                    "implement": base_contract.ITEM_SUMMARY_GATE,
+                }
+                formula_gates[expected["implementation_item_formula"]] = {
+                    "implement-item": base_contract.ITEM_SUMMARY_GATE,
+                }
+            for formula_name, gates in formula_gates.items():
+                resolved = resolved_build_formula(
+                    pack_name, {"formula": formula_name}
+                )
+                steps = {step["id"]: step for step in resolved["steps"]}
+                for step_id, (schema, path_keys) in gates.items():
+                    if step_id not in steps:
+                        continue
+                    step = steps[step_id]
+                    with self.subTest(
+                        pack=pack_name, formula=formula_name, step=step_id
+                    ):
+                        self.assertIn(
+                            "check",
+                            step,
+                            f"{pack_name}/{formula_name}.{step_id} lost its "
+                            "build-artifact validation gate",
+                        )
+                        self.assertEqual(
+                            step["check"]["max_attempts"],
+                            base_contract.BUILD_ARTIFACT_GATE_MAX_ATTEMPTS,
+                        )
+                        self.assertEqual(
+                            step["check"]["check"],
+                            {
+                                "mode": "exec",
+                                "path": base_contract.BUILD_ARTIFACT_CHECK_SCRIPT,
+                                "timeout": "5m",
+                            },
+                        )
+                        self.assertEqual(
+                            step["metadata"]["gc.build.artifact_schema"], schema
+                        )
+                        self.assertEqual(
+                            step["metadata"]["gc.build.artifact_path_keys"],
+                            path_keys,
+                        )
+        for formula_name, step_id in (
+            ("bmad-story-development", "implement"),
+            ("bmad-story-development-item", "implement-item"),
+        ):
+            resolved = resolved_build_formula("bmad", {"formula": formula_name})
+            steps = {step["id"]: step for step in resolved["steps"]}
+            with self.subTest(pack="bmad", formula=formula_name, step=step_id):
+                self.assertEqual(
+                    steps[step_id]["check"]["check"]["path"],
+                    ".gc/scripts/checks/implementation-review-approved.sh",
+                    "bmad story development must keep its methodology "
+                    "review check",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

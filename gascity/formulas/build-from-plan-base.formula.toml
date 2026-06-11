@@ -41,8 +41,16 @@ description_file = "../assets/workflows/build-from-plan-base/prepare-plan.md"
 id = "plan"
 title = "Produce implementation plan"
 needs = ["prepare-plan"]
-metadata = { "gc.run_target" = "gc.design-author" }
+metadata = { "gc.run_target" = "gc.design-author", "gc.build.artifact_schema" = "gc.build.plan.v1", "gc.build.artifact_path_keys" = "gc.build.plan_path,gc.var.plan_path" }
 description_file = "../assets/workflows/build-from-plan-base/plan.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
 
 [[steps]]
 id = "plan-review"

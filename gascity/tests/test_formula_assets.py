@@ -266,6 +266,19 @@ BUILD_ARTIFACT_VALIDATION_GATES = {
     ("implementation-item-base", "implement-item"): ITEM_SUMMARY_GATE,
     ("do-work-item", "implement-item"): ITEM_SUMMARY_GATE,
     ("implement", "summarize"): AGGREGATE_SUMMARY_GATE,
+    # Concrete and continuation overrides replace base steps wholesale
+    # (mergeSteps replaces by ID), so every producer override must
+    # re-declare its gate instead of assuming inheritance.
+    ("build-basic", "requirements"): REQUIREMENTS_GATE,
+    ("build-basic", "plan"): PLAN_GATE,
+    ("build-basic", "decompose"): DECOMPOSITION_GATE,
+    ("build-basic", "review"): BUILD_REVIEW_GATE,
+    ("build-basic", "finalize"): FINAL_REPORT_GATE,
+    ("build-from-requirements-base", "requirements"): REQUIREMENTS_GATE,
+    ("build-from-plan-base", "plan"): PLAN_GATE,
+    ("build-from-decompose-base", "decompose"): DECOMPOSITION_GATE,
+    ("build-from-review-base", "review"): BUILD_REVIEW_GATE,
+    ("build-from-review-base", "finalize"): FINAL_REPORT_GATE,
 }
 
 THIRD_PARTY_BUILD_PACKS = {

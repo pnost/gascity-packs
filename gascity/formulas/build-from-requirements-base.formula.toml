@@ -33,8 +33,16 @@ description_file = "../assets/workflows/build-from-requirements-base/prepare-req
 id = "requirements"
 title = "Produce requirements"
 needs = ["prepare-requirements"]
-metadata = { "gc.run_target" = "gc.requirements-planner" }
+metadata = { "gc.run_target" = "gc.requirements-planner", "gc.build.artifact_schema" = "gc.build.requirements.v1", "gc.build.artifact_path_keys" = "gc.build.requirements_path,gc.var.requirements_path" }
 description_file = "../assets/workflows/build-from-requirements-base/requirements.md"
+
+[steps.check]
+max_attempts = 3
+
+[steps.check.check]
+mode = "exec"
+path = ".gc/scripts/checks/build-artifact-valid.sh"
+timeout = "5m"
 
 [[steps]]
 id = "prepare-plan"
