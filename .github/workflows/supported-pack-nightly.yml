@@ -31,9 +31,9 @@ on:
         required: false
         default: ""
       timeout:
-        description: "Per-pack workflow completion timeout."
+        description: "Optional override for every pack gate timeout, such as 90m."
         required: false
-        default: 90m
+        default: ""
 
 permissions:
   contents: read
@@ -79,21 +79,27 @@ jobs:
           - pack: gascity
             gate: all
             timeout_minutes: 120
+            gate_timeout: 110m
           - pack: superpowers
             gate: all
             timeout_minutes: 150
+            gate_timeout: 140m
           - pack: compound-engineering
             gate: all
             timeout_minutes: 150
+            gate_timeout: 140m
           - pack: gstack
             gate: all
             timeout_minutes: 180
+            gate_timeout: 170m
           - pack: bmad
             gate: all
             timeout_minutes: 150
+            gate_timeout: 140m
           - pack: gastown
             gate: gastown-orchestration
             timeout_minutes: 120
+            gate_timeout: 110m
     env:
       ANTHROPIC_BASE_URL: https://ollama.com
       ANTHROPIC_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
@@ -172,14 +178,14 @@ jobs:
 
       - name: Run supported-pack nightly inference gate
         env:
-          GATE_TIMEOUT: ${{ github.event.inputs.timeout || '90m' }}
+          GATE_TIMEOUT: ${{ github.event.inputs.timeout || matrix.gate_timeout }}
         run: |
           python3 scripts/gascity_pack_inference_gate.py \
             --gc-bin "$(go env GOPATH)/bin/gc" \
             --workdir "$RUNNER_TEMP/supported-pack-nightly/${{ matrix.pack }}" \
             --pack "${{ matrix.pack }}" \
             --gate "${{ matrix.gate }}" \
-            --timeout "${GATE_TIMEOUT:-90m}"
+            --timeout "$GATE_TIMEOUT"
 
       - name: Upload inference gate diagnostics
         if: always()

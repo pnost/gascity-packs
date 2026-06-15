@@ -140,7 +140,9 @@ changes, manual dispatch, and repository dispatch events named
 
 `.github/workflows/supported-pack-nightly.yml` is the scheduled intra-release
 regression run. It first runs the static pack flow contracts, then executes a
-one-pack-at-a-time inference matrix against `gc@main` by default:
+one-pack-at-a-time inference matrix against `gc@main` by default. Each pack has
+a matrix-specific gate timeout below the job timeout so diagnostics still upload;
+manual or release dispatch can override that timeout when deliberately needed:
 
 - `gascity`: `review` plus `build-basic`
 - `superpowers`: review plus build, including brainstorming/spec review,

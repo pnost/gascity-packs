@@ -219,13 +219,24 @@ def test_supported_pack_nightly_workflow_uses_tier_c_ollama_shape_and_pack_matri
     assert 'default: main' in workflow
     assert "max-parallel: 1" in workflow
     assert "runs-on: blacksmith-32vcpu-ubuntu-2404" in workflow
+    assert "GATE_TIMEOUT: ${{ github.event.inputs.timeout || matrix.gate_timeout }}" in workflow
+    assert '--timeout "$GATE_TIMEOUT"' in workflow
     assert 'DOLT_VERSION: "2.1.0"' in workflow
     assert "ANTHROPIC_BASE_URL: https://ollama.com" in workflow
     assert "ANTHROPIC_API_KEY: ${{ secrets.OLLAMA_API_KEY }}" in workflow
     assert "ANTHROPIC_AUTH_TOKEN: ${{ secrets.OLLAMA_API_KEY }}" in workflow
     assert "OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}" in workflow
-    for pack in ("gascity", "superpowers", "compound-engineering", "gstack", "bmad", "gastown"):
+    expected_timeouts = {
+        "gascity": "110m",
+        "superpowers": "140m",
+        "compound-engineering": "140m",
+        "gstack": "170m",
+        "bmad": "140m",
+        "gastown": "110m",
+    }
+    for pack, gate_timeout in expected_timeouts.items():
         assert f"- pack: {pack}" in workflow
+        assert f"gate_timeout: {gate_timeout}" in workflow
     assert '--pack "${{ matrix.pack }}"' in workflow
     assert '--gate "${{ matrix.gate }}"' in workflow
     assert "include-hidden-files: true" in workflow
