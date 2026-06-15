@@ -211,7 +211,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: supported-pack-nightly-${{ matrix.pack }}
+          name: supported-pack-nightly-${{ matrix.pack }}-${{ matrix.gate }}
           path: ${{ runner.temp }}/supported-pack-nightly/${{ matrix.pack }}
           if-no-files-found: ignore
           include-hidden-files: true

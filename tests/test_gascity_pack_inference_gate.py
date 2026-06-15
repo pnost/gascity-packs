@@ -245,6 +245,7 @@ def test_supported_pack_nightly_workflow_uses_tier_c_ollama_shape_and_pack_matri
         assert f"gate_timeout: {gate_timeout}" in workflow
     assert '--pack "${{ matrix.pack }}"' in workflow
     assert '--gate "${{ matrix.gate }}"' in workflow
+    assert "name: supported-pack-nightly-${{ matrix.pack }}-${{ matrix.gate }}" in workflow
     assert "include-hidden-files: true" in workflow
 
 
