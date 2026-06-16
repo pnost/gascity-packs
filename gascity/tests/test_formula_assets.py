@@ -715,6 +715,9 @@ class FormulaAssetTests(unittest.TestCase):
             "gc runtime drain-ack",
             "gc.continuation_group",
             "gc.scope_role=teardown",
+            "Never use a bare `bd close` for a bead that asks for close metadata",
+            'bd update "$GC_BEAD_ID"',
+            "Finding review issues, missing tests, or required follow-up is usually the\nbead's output",
             "check for more routed work before draining",
             "running the same `GC_CLAIM` block again",
         ):
