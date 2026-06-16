@@ -3864,6 +3864,10 @@ description = "Override sink that writes the base triage report contract."
             with self.subTest(pack=pack_name, check="expansion-var"):
                 self.assertIn("review_mode", expansion_data.get("vars", {}))
                 self.assertEqual(
+                    expansion_data.get("vars", {}).get("artifact_path_keys", {}).get("default"),
+                    "gc.build.code_review_report_path,gc.build.review_report_path,gc.var.report_path",
+                )
+                self.assertEqual(
                     child_by_id(expansion_data, case["fix_child"]).get("condition"),
                     "{{review_mode}} != report",
                 )
@@ -3889,7 +3893,23 @@ description = "Override sink that writes the base triage report contract."
                 )
                 with self.subTest(pack=pack_name, check="synthesis-schema"):
                     self.assertIn("schema: gc.build.review.v1", synthesis_text)
+                    self.assertIn("workflow:\n", synthesis_text)
+                    self.assertIn("methodology:\n", synthesis_text)
+                    self.assertIn("producer:\n", synthesis_text)
+                    self.assertIn("trace:\n", synthesis_text)
+                    self.assertIn("upstream:\n", synthesis_text)
+                    self.assertIn("coverage:\n", synthesis_text)
                     self.assertIn("status: changes_required", synthesis_text)
+                    self.assertIn("Do not use dotted YAML keys", synthesis_text)
+                    self.assertIn("do not make `trace` a list", synthesis_text)
+                    self.assertIn("`ID` and `Status` columns", synthesis_text)
+
+        context_prompt = (repo / "gascity" / "assets" / "workflows" / "code-review-base" / "validate-context.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("rendered values in this prompt are authoritative", context_prompt)
+        self.assertIn("Do not require", context_prompt)
+        self.assertIn("review-config.yaml", context_prompt)
 
     def test_implementation_review_check_rejects_incomplete_build_basic_lanes(self) -> None:
         show_json = """[

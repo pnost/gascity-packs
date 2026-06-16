@@ -21,6 +21,37 @@ schema-allowed coverage statuses only (`covered`, `blocked`, `deferred`,
 `resolved`, `approved`, or `changes_required` as coverage row statuses. Include
 `rationale: <why this id is not covered>` on every non-`covered` coverage row.
 
+Use this front matter shape exactly. Do not use dotted YAML keys such as
+`workflow.id`, and do not make `trace` a list:
+
+```yaml
+---
+schema: gc.build.review.v1
+workflow:
+  id: <workflow-root-id>
+  formula: bmad-review
+methodology:
+  pack: bmad
+  name: bmad-review
+producer:
+  formula: bmad-code-review-flow
+  stage: synthesize-bmad-review
+  attempt: 1
+status: changes_required
+trace:
+  upstream:
+    - path: <relative input artifact path>
+      hash: sha256:<input artifact digest>
+      ids: [<finding-or-lane-id>]
+  coverage:
+    - id: <finding-or-lane-id>
+      status: covered
+---
+```
+
+The Markdown coverage table must have `ID` and `Status` columns, and its rows
+must exactly match `trace.coverage`.
+
 Close with `gc.outcome=pass`,
 `code_review.review_verdict=approve|iterate`, and
 `code_review.review_report_path=<synthesized report path>`. Do not set
