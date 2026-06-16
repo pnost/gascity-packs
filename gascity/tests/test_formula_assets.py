@@ -1718,6 +1718,7 @@ class FormulaAssetTests(unittest.TestCase):
                 self.assertEqual(review_step["expand"], expected["review_expansion"])
                 expected_review_expand_vars = {
                     "implementation_target": "{{implementation_target}}",
+                    "review_mode": "{{review_mode}}",
                     "artifact_path_keys": "gc.build.review_report_path",
                 }
                 expected_review_expand_vars.update(expected.get("review_expand_vars", {}))
@@ -2036,6 +2037,7 @@ class FormulaAssetTests(unittest.TestCase):
                 self.assertEqual(write_report["expand"], expected["review_expansion"])
                 expected_review_expand_vars = {
                     "implementation_target": "{{implementation_target}}",
+                    "review_mode": "{{review_mode}}",
                 }
                 expected_review_expand_vars.update(
                     expected.get(
@@ -3618,6 +3620,7 @@ description = "Override sink that writes the base triage report contract."
         *,
         show_json: str,
         list_json: str,
+        parent_show_json: str | None = None,
         extra_env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess:
         root = pathlib.Path(__file__).resolve().parents[1]
@@ -3628,15 +3631,23 @@ description = "Override sink that writes the base triage report contract."
             bin_dir = tmp / "bin"
             bin_dir.mkdir()
             show_path = tmp / "show.json"
+            parent_show_path = tmp / "parent-show.json"
             list_path = tmp / "list.json"
             show_path.write_text(show_json, encoding="utf-8")
+            parent_show_path.write_text(parent_show_json or show_json, encoding="utf-8")
             list_path.write_text(list_json, encoding="utf-8")
             fake_bd = bin_dir / "bd"
             fake_bd.write_text(
                 "#!/usr/bin/env bash\n"
                 "set -euo pipefail\n"
                 "case \"$1\" in\n"
-                "  show) cat \"$BD_SHOW_JSON\" ;;\n"
+                "  show)\n"
+                "    if [ \"${2:-}\" = \"root\" ]; then\n"
+                "      cat \"$BD_PARENT_SHOW_JSON\"\n"
+                "    else\n"
+                "      cat \"$BD_SHOW_JSON\"\n"
+                "    fi\n"
+                "    ;;\n"
                 "  list) cat \"$BD_LIST_JSON\" ;;\n"
                 "  *) exit 2 ;;\n"
                 "esac\n",
@@ -3648,6 +3659,7 @@ description = "Override sink that writes the base triage report contract."
                 **os.environ,
                 "PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}",
                 "BD_SHOW_JSON": str(show_path),
+                "BD_PARENT_SHOW_JSON": str(parent_show_path),
                 "BD_LIST_JSON": str(list_path),
                 "GC_BEAD_ID": "loop",
                 "GC_ITERATION": "1",
@@ -3755,6 +3767,126 @@ description = "Override sink that writes the base triage report contract."
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Implementation review approved", result.stdout)
+
+    def test_implementation_review_check_accepts_report_mode_with_report_path(self) -> None:
+        show_json = """[
+  {
+    "id": "loop",
+    "metadata": {
+      "gc.root_bead_id": "root",
+      "gc.step_id": "write-report.bmad-code-review-loop"
+    }
+  }
+]"""
+        parent_show_json = """[
+  {
+    "id": "root",
+    "metadata": {
+      "gc.var.review_mode": "report",
+      "gc.build.code_review_report_path": ".gc/inference-gate/code-review/review-report.md"
+    }
+  }
+]"""
+        list_json = "[]"
+
+        result = self._run_implementation_review_check(
+            show_json=show_json,
+            parent_show_json=parent_show_json,
+            list_json=list_json,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Implementation review report mode satisfied", result.stdout)
+
+    def test_methodology_code_review_expansions_are_report_mode_aware(self) -> None:
+        repo = pathlib.Path(__file__).resolve().parents[2]
+        cases = {
+            "bmad": {
+                "pack_dir": repo / "bmad",
+                "review_formula": "bmad-review",
+                "build_formula": "bmad-build",
+                "expansion": "bmad-code-review-flow",
+                "fix_child": "{target}.apply-bmad-review-findings",
+                "synthesis": "bmad-code-review-flow/{target}.synthesize-bmad-review.md",
+                "finalize": "bmad-code-review-flow/{target}.md",
+            },
+            "compound-engineering": {
+                "pack_dir": repo / "compound-engineering",
+                "review_formula": "compound-review",
+                "build_formula": "compound-build",
+                "expansion": "compound-code-review",
+                "fix_child": "{target}.apply-review-findings",
+                "synthesis": "compound-code-review/{target}.synthesize-code-review.md",
+                "finalize": "compound-code-review/{target}.md",
+            },
+            "gstack": {
+                "pack_dir": repo / "gstack",
+                "review_formula": "gstack-review",
+                "build_formula": "gstack-build",
+                "expansion": "gstack-code-review",
+                "fix_child": "{target}.apply-review-findings",
+                "synthesis": "gstack-code-review/{target}.synthesize-code-review.md",
+                "finalize": "gstack-code-review/{target}.md",
+            },
+            "superpowers": {
+                "pack_dir": repo / "superpowers",
+                "review_formula": "superpowers-review",
+                "build_formula": "superpowers-build",
+                "expansion": "superpowers-code-review",
+                "fix_child": "{target}.process-code-review",
+                "synthesis": None,
+                "finalize": "superpowers-code-review/{target}.md",
+            },
+        }
+
+        def expanded_steps(formula_data: dict) -> list[dict]:
+            return [
+                step
+                for step in formula_data.get("steps", [])
+                if step.get("expand") in {case["expansion"] for case in cases.values()}
+            ]
+
+        def child_by_id(formula_data: dict, child_id: str) -> dict:
+            for template in formula_data.get("template", []):
+                for child in template.get("children", []):
+                    if child.get("id") == child_id:
+                        return child
+            raise AssertionError(f"missing child {child_id}")
+
+        for pack_name, case in cases.items():
+            pack_dir = case["pack_dir"]
+            expansion_data = tomllib.loads(
+                (pack_dir / "formulas" / f"{case['expansion']}.formula.toml").read_text(encoding="utf-8")
+            )
+            with self.subTest(pack=pack_name, check="expansion-var"):
+                self.assertIn("review_mode", expansion_data.get("vars", {}))
+                self.assertEqual(
+                    child_by_id(expansion_data, case["fix_child"]).get("condition"),
+                    "{{review_mode}} != report",
+                )
+
+            for formula_name in (case["review_formula"], case["build_formula"]):
+                formula_data = tomllib.loads(
+                    (pack_dir / "formulas" / f"{formula_name}.formula.toml").read_text(encoding="utf-8")
+                )
+                matching_steps = expanded_steps(formula_data)
+                self.assertTrue(matching_steps, f"{pack_name}/{formula_name} has no review expansion")
+                for step in matching_steps:
+                    with self.subTest(pack=pack_name, formula=formula_name, step=step["id"]):
+                        self.assertEqual(step["expand_vars"].get("review_mode"), "{{review_mode}}")
+
+            finalize_text = (pack_dir / "assets" / "workflows" / case["finalize"]).read_text(encoding="utf-8")
+            with self.subTest(pack=pack_name, check="finalize-report-mode"):
+                self.assertIn("gc.var.review_mode=report", finalize_text)
+                self.assertIn("code_review.verdict=reported", finalize_text)
+
+            if case["synthesis"]:
+                synthesis_text = (pack_dir / "assets" / "workflows" / case["synthesis"]).read_text(
+                    encoding="utf-8"
+                )
+                with self.subTest(pack=pack_name, check="synthesis-schema"):
+                    self.assertIn("schema: gc.build.review.v1", synthesis_text)
+                    self.assertIn("status: changes_required", synthesis_text)
 
     def test_implementation_review_check_rejects_incomplete_build_basic_lanes(self) -> None:
         show_json = """[
