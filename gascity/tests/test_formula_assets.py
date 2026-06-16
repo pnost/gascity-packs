@@ -2350,6 +2350,8 @@ class FormulaAssetTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         for fragment in (
             "Do not copy the plan checkbox steps into the implementation bead",
+            "do not create implementation beads for Superpowers build",
+            "actual source-code work from the original input task",
             "gc.input_convoy_id",
             "implementation convoy",
             "workflow root bead",
@@ -2357,6 +2359,32 @@ class FormulaAssetTests(unittest.TestCase):
         ):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, decompose_text)
+
+        plan_text = (
+            pack_root / "assets" / "workflows" / "superpowers-build" / "plan.md"
+        ).read_text(encoding="utf-8")
+        for fragment in (
+            "Do not write `prepare`, `requirements`, `plan`",
+            "Only `### Task N` sections are decomposed into implementation beads",
+            "input task or convoy member",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, plan_text)
+
+        plan_review_text = (
+            pack_root
+            / "assets"
+            / "workflows"
+            / "superpowers-plan-review"
+            / "{target}.plan-document-review.md"
+        ).read_text(encoding="utf-8")
+        for fragment in (
+            "Reject with `design_review.review_verdict=iterate`",
+            "must not become implementation beads",
+            "original input task or convoy member",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, plan_review_text)
 
         for formula_name in ("superpowers-development", "superpowers-development-item"):
             formula = load_formula(pack_root, formula_name)
