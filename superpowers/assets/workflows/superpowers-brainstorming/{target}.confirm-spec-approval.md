@@ -58,6 +58,24 @@ the apply pass made no required changes in this attempt, and the requirements
 artifact has no unresolved questions. Otherwise close with
 `design_review.verdict=iterate`.
 
+Use the supported `bd list` metadata filters below to inspect predecessor lanes.
+Do not use `bd list --root`; that flag is not supported by the Beads CLI.
+Select only `gc.scope_role=member` so scope-check control beads do not get
+mistaken for the review or apply lane:
+
+```bash
+bd list --all --has-metadata-key gc.step_id \
+  --metadata-field gc.root_bead_id="$CLAIMED_ROOT_BEAD_ID" \
+  --metadata-field gc.step_id=requirements.review-written-spec \
+  --metadata-field gc.scope_role=member \
+  --json
+bd list --all --has-metadata-key gc.step_id \
+  --metadata-field gc.root_bead_id="$CLAIMED_ROOT_BEAD_ID" \
+  --metadata-field gc.step_id=requirements.apply-spec-feedback \
+  --metadata-field gc.scope_role=member \
+  --json
+```
+
 When iterating, write a concise spec revision summary that the next
 `write-requirements-spec` attempt can apply directly. The summary must name the
 specific requirements sections, ambiguity, contradiction, or scope issue that
@@ -82,9 +100,10 @@ bd update "$CLAIMED_BEAD_ID" \
   --set-metadata 'design_review.output_path=<approval-summary path>' \
   --set-metadata 'gc.continuation_group=superpowers-spec-fixes'
 bd show "$CLAIMED_BEAD_ID" --json | jq -e '
-  .metadata["gc.outcome"] == "pass" and
-  .metadata["design_review.verdict"] == "done" and
-  (.metadata["design_review.output_path"] | type == "string" and length > 0)
+  (if type == "array" then .[0] else . end) as $bead |
+  $bead.metadata["gc.outcome"] == "pass" and
+  $bead.metadata["design_review.verdict"] == "done" and
+  ($bead.metadata["design_review.output_path"] | type == "string" and length > 0)
 '
 bd close "$CLAIMED_BEAD_ID" --reason 'Superpowers spec approved.'
 ```
