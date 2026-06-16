@@ -2519,6 +2519,13 @@ class FormulaAssetTests(unittest.TestCase):
             / "superpowers-brainstorming"
             / "{target}.confirm-spec-approval.md"
         ).read_text(encoding="utf-8")
+        apply_spec_feedback = (
+            pack_root
+            / "assets"
+            / "workflows"
+            / "superpowers-brainstorming"
+            / "{target}.apply-spec-feedback.md"
+        ).read_text(encoding="utf-8")
         final_requirements = (
             pack_root
             / "assets"
@@ -2539,12 +2546,16 @@ class FormulaAssetTests(unittest.TestCase):
         self.assertIn("re-opens the design loop", design_approval)
         self.assertIn("revision summary", design_approval)
         self.assertIn("specific design sections", design_approval)
+        self.assertIn('bd update "$CLAIMED_BEAD_ID"', design_approval)
+        self.assertIn("Do not pass `--metadata` or `--set-metadata` to `bd close`", design_approval)
         self.assertIn("stock Superpowers checklist items 6-7", write_spec)
         self.assertIn("Spec self-review", write_spec)
         self.assertIn("stock design-doc state", write_spec)
         self.assertIn("docs/superpowers/specs/", write_spec)
         self.assertIn("On repeated attempts", write_spec)
         self.assertIn("without clobbering loop feedback", write_spec)
+        self.assertIn('bd update "$CLAIMED_BEAD_ID"', write_spec)
+        self.assertIn("Do not pass `--metadata` or `--set-metadata` to `bd close`", write_spec)
         self.assertIn("written spec", spec_approval)
         self.assertIn("stock `User reviews spec?` approval gate", spec_approval)
         self.assertIn("stock checklist item 8", spec_approval)
@@ -2559,6 +2570,10 @@ class FormulaAssetTests(unittest.TestCase):
         self.assertIn("waiting-human", spec_approval)
         self.assertIn("silence", spec_approval)
         self.assertIn("spec revision summary", spec_approval)
+        self.assertIn('bd update "$CLAIMED_BEAD_ID"', spec_approval)
+        self.assertIn("Do not pass `--metadata` or `--set-metadata` to `bd close`", spec_approval)
+        self.assertIn('bd update "$CLAIMED_BEAD_ID"', apply_spec_feedback)
+        self.assertIn("Do not pass `--metadata` or `--set-metadata` to `bd close`", apply_spec_feedback)
         self.assertIn("stock brainstorming terminal state", final_requirements)
         self.assertIn("where Superpowers\nwould invoke `writing-plans`", final_requirements)
         self.assertIn("stock checklist item 9", final_requirements)
@@ -2587,6 +2602,8 @@ class FormulaAssetTests(unittest.TestCase):
         ):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, brainstorm_design)
+        self.assertIn('bd update "$CLAIMED_BEAD_ID"', brainstorm_design)
+        self.assertIn("Do not pass `--metadata` or `--set-metadata` to `bd close`", brainstorm_design)
 
         review_written_spec = (
             pack_root
@@ -2597,6 +2614,8 @@ class FormulaAssetTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("stock spec reviewer subagent as a Gas City graph lane", review_written_spec)
         self.assertIn("spec-document-reviewer-prompt.md", review_written_spec)
+        self.assertIn('bd update "$CLAIMED_BEAD_ID"', review_written_spec)
+        self.assertIn("Do not pass `--metadata` or `--set-metadata` to `bd close`", review_written_spec)
 
         vendor_skill_root = pack_root / "vendor" / "superpowers" / "skills" / "brainstorming"
         installed_skill_root = pack_root / "skills" / "brainstorming"

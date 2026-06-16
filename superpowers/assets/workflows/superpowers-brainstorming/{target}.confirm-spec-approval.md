@@ -64,9 +64,21 @@ metadata with `gc.build.requirements_status=approved`,
 `gc.build.spec_gate_status=approved`, and a short requirements summary. For a
 human-requested iteration, update `gc.build.spec_gate_status=revision_requested`.
 
-Close with `gc.outcome=pass`, `design_review.verdict=done|iterate`,
-`design_review.output_path=<approval-summary path>`, and
-`gc.continuation_group=superpowers-spec-fixes`.
+Before closing, update the exact claimed bead id with the lane metadata. The
+approval verdict metadata is `design_review.verdict=done|iterate`:
+
+```bash
+bd update "$CLAIMED_BEAD_ID" \
+  --set-metadata 'gc.outcome=pass' \
+  --set-metadata 'design_review.verdict=done' \
+  --set-metadata 'design_review.output_path=<approval-summary path>' \
+  --set-metadata 'gc.continuation_group=superpowers-spec-fixes'
+bd close "$CLAIMED_BEAD_ID" --reason 'Superpowers spec approved.'
+```
+
+If the spec needs another pass, set `design_review.verdict=iterate` instead of
+`done` and name the required correction in the approval summary and close
+reason. Do not pass `--metadata` or `--set-metadata` to `bd close`.
 
 Do not invoke provider-native subagents or upstream plugin runtime commands.
 This Gas City lane owns the approval decision.
