@@ -1517,6 +1517,10 @@ class FormulaAssetTests(unittest.TestCase):
             "approved source anchor/worktree",
             "Do not mark publish failed or downgrade the workflow",
             "preserving the approved build outcome",
+            "Never set\n`gc.outcome=noop`",
+            "--set-metadata 'gc.outcome=pass'",
+            "--set-metadata 'gc.publish_outcome=noop'",
+            "--set-metadata 'gc.publish_mode=disabled'",
         ):
             with self.subTest(asset="publish", fragment=fragment):
                 self.assertIn(fragment, publish_text)
@@ -2570,12 +2574,16 @@ class FormulaAssetTests(unittest.TestCase):
         self.assertIn("waiting-human", spec_approval)
         self.assertIn("silence", spec_approval)
         self.assertIn("spec revision summary", spec_approval)
+        self.assertIn("Do not run `.gc/scripts/checks/design-review-approved.sh`", spec_approval)
+        self.assertIn("Do not use\n`bd update --metadata`", spec_approval)
         self.assertIn("--metadata-field gc.step_id=requirements.review-written-spec", spec_approval)
         self.assertIn("--metadata-field gc.step_id=requirements.apply-spec-feedback", spec_approval)
         self.assertIn("--metadata-field gc.scope_role=member", spec_approval)
         self.assertIn("Do not use `bd list --root`", spec_approval)
         self.assertIn('bd update "$CLAIMED_BEAD_ID"', spec_approval)
         self.assertIn('bd show "$CLAIMED_BEAD_ID" --json', spec_approval)
+        self.assertIn("design_review.approval_mode=autonomous", spec_approval)
+        self.assertIn("design_review.output_path=<approval-summary path>", spec_approval)
         self.assertIn('if type == "array" then .[0] else . end', spec_approval)
         self.assertIn('design_review.verdict == "done"', spec_approval)
         self.assertIn("Do not pass `--metadata` or `--set-metadata` to `bd close`", spec_approval)
