@@ -2571,6 +2571,8 @@ class FormulaAssetTests(unittest.TestCase):
         self.assertIn("silence", spec_approval)
         self.assertIn("spec revision summary", spec_approval)
         self.assertIn('bd update "$CLAIMED_BEAD_ID"', spec_approval)
+        self.assertIn('bd show "$CLAIMED_BEAD_ID" --json', spec_approval)
+        self.assertIn('design_review.verdict == "done"', spec_approval)
         self.assertIn("Do not pass `--metadata` or `--set-metadata` to `bd close`", spec_approval)
         self.assertIn('bd update "$CLAIMED_BEAD_ID"', apply_spec_feedback)
         self.assertIn("Do not pass `--metadata` or `--set-metadata` to `bd close`", apply_spec_feedback)
