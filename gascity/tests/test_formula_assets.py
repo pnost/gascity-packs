@@ -3908,6 +3908,8 @@ description = "Override sink that writes the base triage report contract."
             encoding="utf-8"
         )
         self.assertIn("rendered values in this prompt are authoritative", context_prompt)
+        self.assertIn("interaction_mode: `{{interaction_mode}}`", context_prompt)
+        self.assertIn("review_mode: `{{review_mode}}`", context_prompt)
         self.assertIn("Do not require", context_prompt)
         self.assertIn("review-config.yaml", context_prompt)
 
