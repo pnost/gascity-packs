@@ -278,6 +278,28 @@ if [ "$AUTO_PUSH" = "false" ]; then
   gc runtime drain-ack
   exit 0
 fi
+# PR review gate: pour and execute mol-pr-ship before pushing.
+# Runs simplify → adversarial multi-reviewer panel → mechanical gates.
+# Verdict is written to ship bead notes as `readiness: READY | BLOCKED`.
+# Polecat executes all mol-pr-ship steps inline; read steps with:
+#   gc bd formula show mol-pr-ship
+BRANCH=$(git branch --show-current)
+SHIP_BEAD=$(gc bd mol wisp mol-pr-ship --root-only --var branch="$BRANCH" --json | jq -r '.new_epic_id')
+gc bd update "$SHIP_BEAD" --assignee="$GC_AGENT"
+# --- execute mol-pr-ship steps in full here ---
+# After completing all mol-pr-ship steps, read the verdict:
+SHIP_VERDICT=$(gc bd show "$SHIP_BEAD" --json | jq -r '.[0].notes' | grep '^readiness:' | awk '{print $2}')
+SHIP_BLOCKERS=$(gc bd show "$SHIP_BEAD" --json | jq -r '.[0].notes' | grep '^blockers:' | cut -d' ' -f2-)
+gc bd mol burn "$SHIP_BEAD" --force
+gc bd update <work-bead> --set-metadata pr_review_verdict="$(echo "$SHIP_VERDICT" | tr '[:upper:]' '[:lower:]')"
+if [ "$SHIP_VERDICT" != "READY" ]; then
+  gc bd update <work-bead> \
+    --status=open --assignee="" \
+    --set-metadata halt_reason="pr_ship: $SHIP_BLOCKERS" \
+    --notes "PR ship gate blocked: $SHIP_BLOCKERS"
+  gc runtime drain-ack
+  exit 0
+fi
 git push origin HEAD && {
   BRANCH=$(git branch --show-current)
   REMOTE_REF=$(git ls-remote origin "refs/heads/$BRANCH" 2>/dev/null | awk '{print $1}')

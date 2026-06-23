@@ -215,6 +215,7 @@ Polecats set these metadata fields before assigning a work bead to you:
 - `target` — target branch (optional, defaults to {{ .DefaultBranch }})
 - `merge_strategy` — handoff mode (optional, defaults to `direct`)
 - `existing_pr` — existing PR URL to reuse in `mr` / `pr` mode
+- `pr_review_verdict` — result of the polecat's mol-pr-ship gate (`ready` or `blocked`)
 
 Read them mechanically:
 ```bash
@@ -222,9 +223,26 @@ gc bd show $WORK --json | jq -r '.[0].metadata.branch'
 gc bd show $WORK --json | jq -r '.[0].metadata.target // "{{ .DefaultBranch }}"'
 gc bd show $WORK --json | jq -r '.[0].metadata.merge_strategy // "direct"'
 gc bd show $WORK --json | jq -r '.[0].metadata.existing_pr // empty'
+gc bd show $WORK --json | jq -r '.[0].metadata.pr_review_verdict // empty'
 ```
 
 Never infer a branch name. If `metadata.branch` is missing, reject the bead.
+
+### Pre-merge PR review gate
+
+Before starting rebase/merge, check `metadata.pr_review_verdict`. A bead
+with `blocked` was halted by mol-pr-ship and should not be merged — it
+must go back to a polecat for fixes first. Absence means the bead predates
+the gate; proceed normally.
+
+```bash
+PR_VERDICT=$(gc bd show $WORK --json | jq -r '.[0].metadata.pr_review_verdict // empty')
+if [ "$PR_VERDICT" = "blocked" ]; then
+  gc bd update $WORK --status=open --assignee="" \
+    --set-metadata rejection_reason="pr_ship: blocked — polecat must re-run mol-pr-ship and fix blockers"
+  # Pour next wisp, burn current, continue patrol
+fi
+```
 
 ## Rejection Flow
 
